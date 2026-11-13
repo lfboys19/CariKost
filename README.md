@@ -106,6 +106,72 @@ CariKost/
 
 ---
 
+## ⚡ Implementasi Sprint 05: Reliable, Responsive & Resilient Async Architecture
+
+Pada sprint ini, CariKost ditingkatkan menjadi aplikasi yang tangguh di segala kondisi jaringan nyata (*offline, timeout, server error 404/500, empty data*), mendukung fetch paralel & berurutan, serta menyediakan fitur **Wishlist / Daftar Survey Kost** berbasis REST API.
+
+### 📋 Ringkasan 7 Pilar Utama
+1. **Struktur & Teknologi**: React Native + Expo, Functional Component, Hooks (`useState`, `useEffect`), 100% `async / await`, non-blocking UI.
+2. **Fitur Utama CariKost (FlatList)**: Menampilkan list kost via `FlatList` dengan data:
+   - Nama Kost
+   - Lokasi / Alamat
+   - Harga per bulan
+   - Fasilitas (WiFi, Kamar Mandi Dalam, AC, Kasur & Lemari)
+   - Status Ketersediaan (Tersedia / Penuh)
+3. **Wishlist / Daftar Survey Kost**: Simulasi backend REST API `https://jsonplaceholder.typicode.com`:
+   - `GET /todos?_limit=10` di dalam `useEffect()` saat halaman pertama kali dibuka
+   - Form input + Tombol Tambah -> `POST /todos` dengan body `{ task }`
+   - Tombol toggle status -> `PATCH /todos/:id` mengubah "Belum Disurvey" ↔ "Sudah Disurvey"
+   - Tombol Refresh / Muat Ulang untuk re-fetch data server
+   - Alert informatif untuk setiap error penambahan atau update survey
+4. **State Management 3 Pilar**: Seluruh async flow mengelola 3 state terpisah:
+   - `loading` (status memuat)
+   - `data` (data berhasil diambil)
+   - `error` (pesan & status error)
+   - Pola: `try { ... } catch (err) { ... } finally { setLoading(false); }`
+5. **Error Handling Lengkap**:
+   - **Loading State**: `<ActivityIndicator size="large" />` + teks *"Memuat data kost... Mohon tunggu sebentar."*
+   - **Success State**: Data kost berhasil dimuat dan dirender dalam FlatList
+   - **HTTP Error State**: Tangani 2xx, 4xx (404), 5xx -> *"Gagal mengambil data kost. Terjadi kesalahan pada server. Silakan coba lagi."* + Tombol **Coba Lagi**
+   - **Network Error State**: Tangani kegagalan koneksi total, bukan layar kosong
+   - **Offline State**: *"Tidak ada koneksi internet. Periksa koneksi Anda dan coba lagi."* + Tombol **Coba Lagi**
+   - **Empty State**: Jika data `[]` -> *"Belum ada kost yang tersedia"*
+   - **Timeout State**: Menggunakan `AbortController` (timeout 5-10 detik) -> *"Waktu permintaan habis. Server terlalu lama merespons."* + Tombol **Coba Lagi**
+   - **Retry Mechanism**: Tombol "Coba Lagi" benar-benar melakukan re-fetch ke server
+6. **Eksekusi Async Paralel & Berurutan**:
+   - **Berurutan (Serial / Dependent)**: `const user = await getUser(); const kostFavorit = await getKost(user.id);`
+   - **Paralel Fail-Fast (`Promise.all`)**: Transaksi krusial Booking Kost & Cek Ketersediaan Kamar. Jika 1 gagal, seluruh transaksi dibatalkan!
+   - **Paralel Toleran Error (`Promise.allSettled`)**: Dashboard multi-widget memuat Kost + Promo + Notifikasi secara bersamaan. Jika server promo gagal, list kost & notifikasi tetap tampil!
+7. **Mode Pengujian Evaluasi di Expo Go (HP Fisik)**:
+   - Tersedia toolbar interaktif **"🧪 Mode Uji Evaluasi (Expo Go)"** di atas halaman Beranda.
+   - Penguji/dosen dapat menguji 5 skenario hanya dengan 1 ketukan:
+     - 🟢 **Online Normal** (Live API)
+     - 🔴 **Offline / Putus** (Pesan offline + Coba Lagi)
+     - 🟠 **Error 500 / 404** (Pesan HTTP server error + Coba Lagi)
+     - ⏱️ **Timeout > 5s** (Pesan waktu habis AbortController + Coba Lagi)
+     - 📦 **Data Kosong** (Empty state *"Belum ada kost yang tersedia"*)
+
+---
+
+## 🧪 Cara Menjalankan Test Otomatis
+
+Seluruh logika keamanan dan kehandalan async telah diverifikasi dengan unit & integration test:
+
+```bash
+# Jalankan seluruh test suite (Sprint 04 + Sprint 05)
+npm test
+
+# Atau khusus uji kehandalan async & error handling
+npm run test:async
+```
+
+Hasil verifikasi:
+- `test/secureApi.test.js`: **17 Lulus, 0 Gagal**
+- `test/asyncReliability.test.js`: **12 Lulus, 0 Gagal**
+- `npx expo-doctor`: **21/21 checks passed**
+
+---
+
 ## 🛡️ Keamanan & Aksesibilitas
 
 - **Keamanan Kredensial**: Menggunakan `expo-secure-store` untuk mengenkripsi token sesi dan data sensitif pengguna.

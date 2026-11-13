@@ -1,5 +1,9 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { SecureStorage, STORAGE_KEYS } from '../utils/storage';
+import { authService } from '../services/authService';
+import { apiClient } from '../services/apiClient';
+import { API_BASE_URL } from '../services/apiConfig';
+import { createDemoJwt } from '../services/jwtUtils';
 
 export const AuthContext = createContext({
   user: null,
@@ -11,6 +15,9 @@ export const AuthContext = createContext({
   logout: async () => {},
   demoLogin: async () => {},
   updateProfile: async () => {},
+  testAuthenticatedRequest: async () => {},
+  testUnauthenticatedRequest: async () => {},
+  apiBaseUrl: API_BASE_URL,
 });
 
 export const AuthProvider = ({ children }) => {
@@ -18,53 +25,63 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check stored auth token on startup
+  // Auto-logout when API returns 401 Unauthorized
+  const handleUnauthorized = useCallback(async () => {
+    await SecureStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    await SecureStorage.removeItem(STORAGE_KEYS.USER_DATA);
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  // 11. Session Management: Restore and validate session on startup
   useEffect(() => {
+    // Register 401 interceptor callback
+    apiClient.setOnUnauthorized(handleUnauthorized);
+
     const bootstrapAsync = async () => {
       try {
-        const storedToken = await SecureStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-        const storedUser = await SecureStorage.getItem(STORAGE_KEYS.USER_DATA, true);
-
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(storedUser);
+        const session = await authService.validateSession();
+        if (session.isValid && session.token && session.user) {
+          setToken(session.token);
+          setUser(session.user);
+        } else {
+          // If expired or invalid, clear state
+          setToken(null);
+          setUser(null);
         }
       } catch (e) {
-        console.error('Failed to restore auth session:', e);
+        setToken(null);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     bootstrapAsync();
-  }, []);
+  }, [handleUnauthorized]);
 
+  /**
+   * 1 & 2. Login via API with Token-based Authentication
+   */
   const login = async (email, password) => {
-    // Simulated authentication with token generation
-    const mockToken = 'ck_jwt_' + Math.random().toString(36).substring(2) + Date.now();
-    
-    // Check if email matches existing demo user or create session user
-    const loggedUser = {
-      id: 'usr_' + Date.now(),
-      name: email.split('@')[0].replace('.', ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase()),
-      email: email.trim().toLowerCase(),
-      phone: '081234567890',
-      role: 'Mahasiswa',
-      campus: 'Universitas Indonesia',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-      joinedAt: new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
+    const result = await authService.login(email, password);
+    if (result.success) {
+      setToken(result.token);
+      setUser(result.user);
+      return { success: true };
+    }
+    return {
+      success: false,
+      error: result.error,
+      status: result.status,
+      message: result.message,
     };
-
-    await SecureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
-    await SecureStorage.setItem(STORAGE_KEYS.USER_DATA, loggedUser);
-
-    setToken(mockToken);
-    setUser(loggedUser);
-    return { success: true };
   };
 
+  /**
+   * Register with Token generation
+   */
   const register = async ({ name, email, phone, role, campus }) => {
-    const mockToken = 'ck_jwt_' + Math.random().toString(36).substring(2) + Date.now();
     const newUser = {
       id: 'usr_' + Date.now(),
       name: name.trim(),
@@ -76,38 +93,34 @@ export const AuthProvider = ({ children }) => {
       joinedAt: new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
     };
 
-    await SecureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
+    const newJwt = createDemoJwt(newUser, 86400);
+
+    await SecureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newJwt);
     await SecureStorage.setItem(STORAGE_KEYS.USER_DATA, newUser);
 
-    setToken(mockToken);
+    setToken(newJwt);
     setUser(newUser);
     return { success: true };
   };
 
+  /**
+   * Demo Login with standard RFC 7519 JWT
+   */
   const demoLogin = async () => {
-    const demoToken = 'ck_jwt_demo_token_123456';
-    const demoUser = {
-      id: 'usr_demo',
-      name: 'Rifqi Pratama',
-      email: 'rifqi.mhs@ui.ac.id',
-      phone: '081289998877',
-      role: 'Mahasiswa',
-      campus: 'Universitas Indonesia (Fasilkom)',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-      joinedAt: 'Jan 2025',
-    };
-
-    await SecureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, demoToken);
-    await SecureStorage.setItem(STORAGE_KEYS.USER_DATA, demoUser);
-
-    setToken(demoToken);
-    setUser(demoUser);
-    return { success: true };
+    const result = await authService.demoLogin();
+    if (result.success) {
+      setToken(result.token);
+      setUser(result.user);
+      return { success: true };
+    }
+    return { success: false, message: 'Gagal masuk akun demo.' };
   };
 
+  /**
+   * 12. Sempurnakan Logout: Invalidate token & clear SecureStore
+   */
   const logout = async () => {
-    await SecureStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-    await SecureStorage.removeItem(STORAGE_KEYS.USER_DATA);
+    await authService.logout(token);
     setToken(null);
     setUser(null);
   };
@@ -116,6 +129,20 @@ export const AuthProvider = ({ children }) => {
     const updated = { ...user, ...updates };
     await SecureStorage.setItem(STORAGE_KEYS.USER_DATA, updated);
     setUser(updated);
+  };
+
+  /**
+   * 13. Test Authenticated Request (with Bearer Token)
+   */
+  const testAuthenticatedRequest = async () => {
+    return apiClient.testAuthenticatedRequest(token);
+  };
+
+  /**
+   * 14. Test Unauthenticated Request (without Bearer Token)
+   */
+  const testUnauthenticatedRequest = async () => {
+    return apiClient.testUnauthenticatedRequest();
   };
 
   return (
@@ -130,6 +157,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         demoLogin,
         updateProfile,
+        testAuthenticatedRequest,
+        testUnauthenticatedRequest,
+        apiBaseUrl: API_BASE_URL,
       }}
     >
       {children}

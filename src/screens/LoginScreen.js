@@ -49,7 +49,13 @@ export const LoginScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      await login(email, password);
+      const res = await login(email, password);
+      if (res && !res.success) {
+        Alert.alert(
+          'Gagal Masuk',
+          res.message || 'Email atau kata sandi tidak sesuai. Silakan periksa kembali kredensial Anda.'
+        );
+      }
     } catch (error) {
       Alert.alert('Gagal Masuk', 'Terjadi kesalahan saat masuk. Silakan coba lagi.');
     } finally {

@@ -136,10 +136,23 @@ export const SearchFilterScreen = ({ navigation }) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Filter Spesifikasi Kost</Text>
-          <Text style={styles.subtitle}>
-            Sesuaikan lokasi, rentang harga, jam malam, dan aturan tamu yang Anda inginkan
-          </Text>
+          {navigation.canGoBack && navigation.canGoBack() ? (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Kembali ke layar sebelumnya"
+            >
+              <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Filter Spesifikasi Kost</Text>
+            <Text style={styles.subtitle}>
+              Sesuaikan lokasi, rentang harga, jam malam, dan aturan tamu yang Anda inginkan
+            </Text>
+          </View>
         </View>
 
         {/* Search Keyword */}
@@ -339,9 +352,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   title: {
     fontSize: 22,

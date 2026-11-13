@@ -103,6 +103,32 @@ export const CardKos = ({ kost, onPress, horizontal = false }) => {
           </Text>
         </View>
 
+        {/* Facilities Badges (WiFi, Kamar Mandi Dalam, AC, dll) */}
+        {kost.facilities && kost.facilities.length > 0 && (
+          <View style={styles.facilitiesRow}>
+            {kost.facilities.slice(0, 3).map((fac, idx) => {
+              const facName = typeof fac === 'string' ? fac : fac.name || fac.id;
+              let icon = 'sparkles-outline';
+              if (facName.toLowerCase().includes('wifi')) icon = 'wifi-outline';
+              else if (facName.toLowerCase().includes('ac')) icon = 'snow-outline';
+              else if (facName.toLowerCase().includes('mandi')) icon = 'water-outline';
+              else if (facName.toLowerCase().includes('kasur') || facName.toLowerCase().includes('lemari')) icon = 'bed-outline';
+
+              return (
+                <View key={idx} style={styles.facilityPill}>
+                  <Ionicons name={icon} size={11} color={Colors.textSecondary} style={{ marginRight: 3 }} />
+                  <Text style={styles.facilityPillText} numberOfLines={1}>{facName}</Text>
+                </View>
+              );
+            })}
+            {kost.facilities.length > 3 && (
+              <View style={styles.facilityPillMore}>
+                <Text style={styles.facilityPillMoreText}>+{kost.facilities.length - 3}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Featured Pro Tag */}
         {kost.pros && kost.pros.length > 0 && (
           <View style={styles.highlightPro}>
@@ -246,6 +272,40 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginLeft: 4,
     flex: 1,
+  },
+  facilitiesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  facilityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  facilityPillText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    maxWidth: 90,
+  },
+  facilityPillMore: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  facilityPillMoreText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.primaryDark,
   },
   highlightPro: {
     flexDirection: 'row',

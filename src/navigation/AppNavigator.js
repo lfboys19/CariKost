@@ -17,6 +17,8 @@ import { SearchFilterScreen } from '../screens/SearchFilterScreen';
 import { SavedScreen } from '../screens/SavedScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { DetailKostScreen } from '../screens/DetailKostScreen';
+import { SurveyScreen } from '../screens/SurveyScreen';
+import { AsyncLabScreen } from '../screens/AsyncLabScreen';
 
 const AuthStack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
@@ -61,8 +63,10 @@ const MainTabNavigator = () => {
           let iconName = 'home';
           if (route.name === 'HomeTab') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'SearchTab') {
-            iconName = focused ? 'funnel' : 'funnel-outline';
+          } else if (route.name === 'SurveyTab') {
+            iconName = focused ? 'clipboard' : 'clipboard-outline';
+          } else if (route.name === 'AsyncLabTab') {
+            iconName = focused ? 'flash' : 'flash-outline';
           } else if (route.name === 'SavedTab') {
             iconName = focused ? 'heart' : 'heart-outline';
           } else if (route.name === 'ProfileTab') {
@@ -81,11 +85,19 @@ const MainTabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="SearchTab"
-        component={SearchFilterScreen}
+        name="SurveyTab"
+        component={SurveyScreen}
         options={{
-          tabBarLabel: 'Filter Kost',
-          tabBarAccessibilityLabel: 'Tab Filter Spesifikasi Kost',
+          tabBarLabel: 'Survey Kost',
+          tabBarAccessibilityLabel: 'Tab Daftar Survey Kost (Wishlist)',
+        }}
+      />
+      <Tab.Screen
+        name="AsyncLabTab"
+        component={AsyncLabScreen}
+        options={{
+          tabBarLabel: 'Async Lab',
+          tabBarAccessibilityLabel: 'Tab Laboratorium Async',
         }}
       />
       <Tab.Screen
@@ -147,6 +159,13 @@ export const AppNavigator = () => {
               component={DetailKostScreen}
               options={{
                 animation: 'slide_from_bottom',
+              }}
+            />
+            <RootStack.Screen
+              name="SearchFilter"
+              component={SearchFilterScreen}
+              options={{
+                animation: 'slide_from_right',
               }}
             />
           </>

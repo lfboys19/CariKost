@@ -25,6 +25,7 @@ import { Button } from '../components/Button';
 import { PhotoGalleryModal } from '../components/PhotoGalleryModal';
 import { AddReviewModal } from '../components/AddReviewModal';
 import { useBookmark } from '../context/BookmarkContext';
+import { executeBookingFailFast } from '../services/kostService';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,34 @@ export const DetailKostScreen = ({ route, navigation }) => {
   // Modals state
   const [isGalleryVisible, setIsGalleryVisible] = useState(false);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
+  const [isBookingLoading, setIsBookingLoading] = useState(false);
+
+  const handleBookingFailFast = async () => {
+    setIsBookingLoading(true);
+    try {
+      const isRoomFull = kost.status === 'Penuh' || kost.availableRooms <= 0;
+      const res = await executeBookingFailFast(
+        {
+          kostName: kost.name,
+          totalAmount: kost.priceMonthly,
+          studentName: 'Mahasiswa Pencari Kos',
+        },
+        isRoomFull
+      );
+
+      Alert.alert(
+        'Booking Berhasil Terkonfirmasi! 🎉',
+        `Nomor Pesanan: ${res.order.bookingId}\nStatus Kamar: ${res.availability.roomId} Terkunci.\n\nKedua proses verifikasi berhasil diselesaikan bersamaan via Promise.all().`
+      );
+    } catch (err) {
+      Alert.alert(
+        'Booking Dibatalkan (Fail-Fast) ⚠️',
+        `Transaksi gagal: ${err.message}\n\nPromise.all() membatalkan seluruh transaksi secara serentak karena salah satu proses verifikasi kamar tidak terpenuhi.`
+      );
+    } finally {
+      setIsBookingLoading(false);
+    }
+  };
 
   // Local reviews state to allow adding immediate honest reviews
   const [reviewsList, setReviewsList] = useState(kost.reviews || []);
@@ -384,6 +413,34 @@ export const DetailKostScreen = ({ route, navigation }) => {
               *Termasuk sewa bulan ke-1 ({formatRupiah(kost.priceBreakdown.rent)}) + deposit jaminan (
               {formatRupiah(kost.priceBreakdown.deposit.amount)}) + iuran kebersihan.
             </Text>
+
+            {/* Promise.all Transaction Booking Action */}
+            <TouchableOpacity
+              style={[
+                styles.calcBookingBtn,
+                kost.status === 'Penuh' && styles.calcBookingBtnDisabled,
+              ]}
+              onPress={handleBookingFailFast}
+              disabled={isBookingLoading}
+              activeOpacity={0.8}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Booking kamar dengan verifikasi Promise.all"
+            >
+              <Ionicons
+                name={kost.status === 'Penuh' ? 'lock-closed' : 'flash'}
+                size={16}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.calcBookingBtnText}>
+                {isBookingLoading
+                  ? 'Memproses Verifikasi Kamar & Booking...'
+                  : kost.status === 'Penuh'
+                  ? 'Kamar Penuh (Uji Fail-Fast)'
+                  : 'Ajukan Booking Sekarang (Promise.all)'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -785,6 +842,23 @@ const styles = StyleSheet.create({
     color: '#065F46',
     marginTop: 4,
     lineHeight: 16,
+  },
+  calcBookingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 12,
+  },
+  calcBookingBtnDisabled: {
+    backgroundColor: '#94A3B8',
+  },
+  calcBookingBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   specGrid: {
     flexDirection: 'row',
